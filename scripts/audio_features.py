@@ -40,33 +40,36 @@ def log_mel_spectrogram(y,
 
 
 # %%
+def main():
+    with open(os.path.join(global_params["dataset_dir"], "audio_info.pkl"), "rb") as store:
+        audio_fids = pickle.load(store)["audio_fids"]
+    
+    for split in global_params["audio_splits"]:
+    
+        fid_fnames = audio_fids[split]
+        fname_fids = {fid_fnames[fid]: fid for fid in fid_fnames}
+    
+        audio_dir = os.path.join(global_params["dataset_dir"], split)
+        audio_fpath = os.path.join(global_params["dataset_dir"], f"{split}_audio_logmels.hdf5")
+    
+        with h5py.File(audio_fpath, "w") as stream:
+    
+            for fpath in glob.glob(r"{}/*.wav".format(audio_dir)):
+                try:
+                    fname = os.path.basename(fpath)
+                    fid = fname_fids[fname]
+    
+                    y, sr = librosa.load(fpath, sr=None, mono=True)
+                    log_mel = log_mel_spectrogram(y=y, sample_rate=sr, window_length_secs=0.040,
+                                                  hop_length_secs=0.020, num_mels=64,
+                                                  log_offset=np.spacing(1))
+    
+                    stream[fid] = np.vstack(log_mel).transpose()  # [Time, Mel]
+                    print(fid, fname)
+                except:
+                    print("Error audio file:", fpath)
+    
+        print("Save", audio_fpath)
 
-with open(os.path.join(global_params["dataset_dir"], "audio_info.pkl"), "rb") as store:
-    audio_fids = pickle.load(store)["audio_fids"]
-
-for split in global_params["audio_splits"]:
-
-    fid_fnames = audio_fids[split]
-    fname_fids = {fid_fnames[fid]: fid for fid in fid_fnames}
-
-    audio_dir = os.path.join(global_params["dataset_dir"], split)
-    audio_fpath = os.path.join(global_params["dataset_dir"], f"{split}_audio_logmels.hdf5")
-
-    with h5py.File(audio_fpath, "w") as stream:
-
-        for fpath in glob.glob(r"{}/*.wav".format(audio_dir)):
-            try:
-                fname = os.path.basename(fpath)
-                fid = fname_fids[fname]
-
-                y, sr = librosa.load(fpath, sr=None, mono=True)
-                log_mel = log_mel_spectrogram(y=y, sample_rate=sr, window_length_secs=0.040,
-                                              hop_length_secs=0.020, num_mels=64,
-                                              log_offset=np.spacing(1))
-
-                stream[fid] = np.vstack(log_mel).transpose()  # [Time, Mel]
-                print(fid, fname)
-            except:
-                print("Error audio file:", fpath)
-
-    print("Save", audio_fpath)
+if __name__ == "__main__":
+    main()
